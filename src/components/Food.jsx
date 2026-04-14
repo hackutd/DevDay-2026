@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { data } from '../data/data.js';
 import { AppContext } from '../context/AppContext';
 import { AiFillHeart, AiOutlineHeart } from 'react-icons/ai';
 
+// Price tier assigned per TheMealDB category
+const CATEGORY_PRICES = {
+  Chicken: '$$',
+  Beef: '$$$',
+  Pasta: '$$',
+  Seafood: '$$$$',
+};
+
+const INITIAL_CATEGORIES = Object.keys(CATEGORY_PRICES);
+
 const Food = () => {
-  //   console.log(data);
-  const [foods, setFoods] = useState(data);
+  const [allFoods, setAllFoods] = useState([]);
+  const [foods, setFoods] = useState([]);
   const [foodDetails, setFoodDetails] = useState(null);
   const [expandedCardId, setExpandedCardId] = useState(null);
   const [showIngredientsToggle, setShowIngredientsToggle] = useState(false);
@@ -17,7 +26,39 @@ const Food = () => {
 
   const { favorites, toggleFavorite, addToCart } = useContext(AppContext);
 
-  // Search delay
+  // Fetch initial menu from TheMealDB on mount
+  useEffect(() => {
+    const fetchInitialFoods = async () => {
+      setIsSearching(true);
+      try {
+        const results = await Promise.all(
+          INITIAL_CATEGORIES.map((cat) =>
+            fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?c=${cat}`)
+              .then((r) => r.json())
+              .then((d) =>
+                (d.meals || []).slice(0, 4).map((meal) => ({
+                  id: meal.idMeal,
+                  name: meal.strMeal,
+                  category: cat.toLowerCase(),
+                  image: meal.strMealThumb,
+                  price: CATEGORY_PRICES[cat],
+                }))
+              )
+          )
+        );
+        const combined = results.flat();
+        setAllFoods(combined);
+        setFoods(combined);
+      } catch (error) {
+        console.error('Error fetching initial foods:', error);
+      }
+      setIsSearching(false);
+    };
+
+    fetchInitialFoods();
+  }, []);
+
+  // Ingredient search debounce
   useEffect(() => {
     if (!ingredientSearchQuery) return;
 
@@ -28,62 +69,57 @@ const Food = () => {
     return () => clearTimeout(timeoutId);
   }, [ingredientSearchQuery]);
 
-  //   Filter Type burgers/pizza/etc
+  // Filter by category (local, against pre-loaded allFoods)
   const filterType = (category) => {
-    setFoods(
-      data.filter((item) => {
-        return item.category === category;
-      })
-    );
+    setFoods(allFoods.filter((item) => item.category === category));
   };
 
-  //   Filter by price
+  // Filter by price (local, against pre-loaded allFoods)
   const filterPrice = (price) => {
-    setFoods(
-      data.filter((item) => {
-        return item.price === price;
-      })
-    );
+    setFoods(allFoods.filter((item) => item.price === price));
   };
 
-  // Ingredient Search
+  // Ingredient Search (TheMealDB API)
   const executeSearch = async (query) => {
     setIsSearching(true);
     try {
-      const response = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?i=${query}`);
+      const response = await fetch(
+        `https://www.themealdb.com/api/json/v1/1/filter.php?i=${query}`
+      );
       const apiData = await response.json();
 
       if (apiData.meals) {
-        // Map MealDB data to internal
         const mappedFoods = apiData.meals.map((meal) => ({
           id: meal.idMeal,
           name: meal.strMeal,
           category: 'searched',
           image: meal.strMealThumb,
-          price: '$$', // Fake price
+          price: '$$',
         }));
         setFoods(mappedFoods);
       } else {
-        setFoods([]); // No results
+        setFoods([]);
       }
     } catch (error) {
-      console.error("Error fetching ingredient search:", error);
+      console.error('Error fetching ingredient search:', error);
     }
     setIsSearching(false);
   };
 
-  // Dietary Filter
+  // Dietary / category filter (TheMealDB API)
   const searchByCategory = async (categoryStr) => {
     setIsSearching(true);
     try {
-      const response = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?c=${categoryStr}`);
+      const response = await fetch(
+        `https://www.themealdb.com/api/json/v1/1/filter.php?c=${categoryStr}`
+      );
       const apiData = await response.json();
 
       if (apiData.meals) {
         const mappedFoods = apiData.meals.map((meal) => ({
           id: meal.idMeal,
           name: meal.strMeal,
-          category: categoryStr,
+          category: categoryStr.toLowerCase(),
           image: meal.strMealThumb,
           price: '$$$',
         }));
@@ -92,49 +128,52 @@ const Food = () => {
         setFoods([]);
       }
     } catch (error) {
-      console.error("Error fetching category:", error);
+      console.error('Error fetching category:', error);
     }
     setIsSearching(false);
   };
 
-  // Get data from MealDB
+  // Fetch meal details (ingredients, nutrition) from TheMealDB
   const fetchFoodDetails = async (food) => {
     setIsLoading(true);
     setFoodDetails(null);
 
     try {
-      // Uses last word of food name
       const searchTerm = food.name.split(' ').pop();
-      const response = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${searchTerm}`);
+      const response = await fetch(
+        `https://www.themealdb.com/api/json/v1/1/search.php?s=${searchTerm}`
+      );
       const apiData = await response.json();
 
       let ingredients = [];
       if (apiData.meals && apiData.meals.length > 0) {
-        const meal = apiData.meals[0]; // grab recipe
+        const meal = apiData.meals[0];
         for (let i = 1; i <= 20; i++) {
           if (meal[`strIngredient${i}`] && meal[`strIngredient${i}`].trim() !== '') {
             ingredients.push({
               name: meal[`strIngredient${i}`],
-              measure: meal[`strMeasure${i}`]
+              measure: meal[`strMeasure${i}`],
             });
           }
         }
-      } else {
-        ingredients = [];
       }
 
-      // Common allergens
-      const COMMON_ALLERGENS = ['cheese', 'milk', 'butter', 'cream', 'nut', 'peanut', 'almond', 'shrimp', 'crab', 'soy', 'wheat', 'egg'];
+      const COMMON_ALLERGENS = [
+        'cheese', 'milk', 'butter', 'cream', 'nut', 'peanut',
+        'almond', 'shrimp', 'crab', 'soy', 'wheat', 'egg',
+      ];
 
-      ingredients = ingredients.map(ing => ({
+      ingredients = ingredients.map((ing) => ({
         ...ing,
-        isAllergen: COMMON_ALLERGENS.some(allergen => ing.name.toLowerCase().includes(allergen))
+        isAllergen: COMMON_ALLERGENS.some((allergen) =>
+          ing.name.toLowerCase().includes(allergen)
+        ),
       }));
 
-      // Detect allergens
-      const detectedAllergens = ingredients.filter(ing => ing.isAllergen).map(ing => ing.name);
+      const detectedAllergens = ingredients
+        .filter((ing) => ing.isAllergen)
+        .map((ing) => ing.name);
 
-      // Fake nutrition
       const mockNutrition = {
         calories: Math.floor(Math.random() * 500) + 300,
         protein: Math.floor(Math.random() * 30) + 10,
@@ -144,7 +183,7 @@ const Food = () => {
 
       setFoodDetails({ ingredients, nutrition: mockNutrition, detectedAllergens });
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error('Error fetching data:', error);
     }
     setIsLoading(false);
   };
@@ -171,34 +210,34 @@ const Food = () => {
           <p className='font-bold text-gray-700'>Filter Type</p>
           <div className='flex justfiy-between flex-wrap'>
             <button
-              onClick={() => setFoods(data)}
+              onClick={() => setFoods(allFoods)}
               className='m-1 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
             >
               All
-            </button>
-            <button
-              onClick={() => filterType('burger')}
-              className='m-1 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
-            >
-              Burgers
-            </button>
-            <button
-              onClick={() => filterType('pizza')}
-              className='m-1 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
-            >
-              Pizza
-            </button>
-            <button
-              onClick={() => filterType('salad')}
-              className='m-1 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
-            >
-              Salads
             </button>
             <button
               onClick={() => filterType('chicken')}
               className='m-1 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
             >
               Chicken
+            </button>
+            <button
+              onClick={() => filterType('beef')}
+              className='m-1 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
+            >
+              Beef
+            </button>
+            <button
+              onClick={() => filterType('pasta')}
+              className='m-1 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
+            >
+              Pasta
+            </button>
+            <button
+              onClick={() => filterType('seafood')}
+              className='m-1 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
+            >
+              Seafood
             </button>
           </div>
         </div>
@@ -233,7 +272,7 @@ const Food = () => {
           </div>
         </div>
 
-        {/* Dietary Filters */}
+        {/* Dietary Filters (live API) */}
         <div className='mt-4 lg:mt-0'>
           <p className='font-bold text-gray-700'>Dietary (API)</p>
           <div className='flex justify-between flex-wrap max-w-[280px] w-full'>
@@ -250,10 +289,10 @@ const Food = () => {
               Vegetarian
             </button>
             <button
-              onClick={() => searchByCategory('Seafood')}
+              onClick={() => searchByCategory('Dessert')}
               className='m-1 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white transition-colors'
             >
-              Seafood
+              Dessert
             </button>
           </div>
         </div>
@@ -275,19 +314,26 @@ const Food = () => {
       {isSearching && (
         <div className='grid grid-cols-2 lg:grid-cols-4 gap-6 pt-4'>
           {[1, 2, 3, 4].map((n) => (
-            <div key={n} className='border shadow-lg rounded-lg h-[250px] bg-gray-200 animate-pulse'></div>
+            <div
+              key={n}
+              className='border shadow-lg rounded-lg h-[250px] bg-gray-200 animate-pulse'
+            ></div>
           ))}
         </div>
       )}
 
       {foods.length === 0 && !isSearching && (
-        <p className='text-center mt-8 text-gray-500 font-bold'>No foods found matching those criteria.</p>
+        <p className='text-center mt-8 text-gray-500 font-bold'>
+          No foods found matching those criteria.
+        </p>
       )}
 
       {!isSearching && (
         <div className='grid grid-cols-2 lg:grid-cols-4 gap-6 pt-4'>
           {foods.slice(0, visibleCount).map((item, index) => {
-            const isFav = favorites.some(f => f.id === item.id || f.name === item.name);
+            const isFav = favorites.some(
+              (f) => f.id === item.id || f.name === item.name
+            );
             return (
               <div
                 key={index}
@@ -300,7 +346,11 @@ const Food = () => {
                     toggleFavorite(item);
                   }}
                 >
-                  {isFav ? <AiFillHeart size={24} className='text-red-500' /> : <AiOutlineHeart size={24} className='text-gray-500' />}
+                  {isFav ? (
+                    <AiFillHeart size={24} className='text-red-500' />
+                  ) : (
+                    <AiOutlineHeart size={24} className='text-gray-500' />
+                  )}
                 </div>
 
                 <div
@@ -339,12 +389,26 @@ const Food = () => {
                     ) : foodDetails ? (
                       <div>
                         <div>
-                          <h3 className='font-bold mb-2 text-orange-600 text-sm'>Est. Nutrition</h3>
+                          <h3 className='font-bold mb-2 text-orange-600 text-sm'>
+                            Est. Nutrition
+                          </h3>
                           <div className='flex gap-2 justify-between bg-white p-2 rounded border text-xs'>
-                            <div className='text-center'><p className='font-bold'>{foodDetails.nutrition.calories}</p><p className='text-gray-500'>Cal</p></div>
-                            <div className='text-center'><p className='font-bold'>{foodDetails.nutrition.protein}g</p><p className='text-gray-500'>Pro</p></div>
-                            <div className='text-center'><p className='font-bold'>{foodDetails.nutrition.fat}g</p><p className='text-gray-500'>Fat</p></div>
-                            <div className='text-center'><p className='font-bold'>{foodDetails.nutrition.carbs}g</p><p className='text-gray-500'>Carbs</p></div>
+                            <div className='text-center'>
+                              <p className='font-bold'>{foodDetails.nutrition.calories}</p>
+                              <p className='text-gray-500'>Cal</p>
+                            </div>
+                            <div className='text-center'>
+                              <p className='font-bold'>{foodDetails.nutrition.protein}g</p>
+                              <p className='text-gray-500'>Pro</p>
+                            </div>
+                            <div className='text-center'>
+                              <p className='font-bold'>{foodDetails.nutrition.fat}g</p>
+                              <p className='text-gray-500'>Fat</p>
+                            </div>
+                            <div className='text-center'>
+                              <p className='font-bold'>{foodDetails.nutrition.carbs}g</p>
+                              <p className='text-gray-500'>Carbs</p>
+                            </div>
                           </div>
                         </div>
                         <button
@@ -359,47 +423,59 @@ const Food = () => {
 
                         {showIngredientsToggle && (
                           <div className='mt-4'>
+                            {foodDetails.detectedAllergens &&
+                              foodDetails.detectedAllergens.length > 0 && (
+                                <div className='p-3 mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded shadow-sm'>
+                                  <p className='font-bold flex items-center text-sm'>
+                                    <span className='mr-2 text-lg'>⚠️</span> Allergen Warning
+                                  </p>
+                                  <p className='text-xs mt-1 font-medium'>
+                                    Contains: {foodDetails.detectedAllergens.join(', ')}
+                                  </p>
+                                </div>
+                              )}
 
-                            {/*Allergen Warning*/}
-                            {foodDetails.detectedAllergens && foodDetails.detectedAllergens.length > 0 && (
-                              <div className='p-3 mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded shadow-sm'>
-                                <p className='font-bold flex items-center text-sm'>
-                                  <span className='mr-2 text-lg'>⚠️</span> Allergen Warning
-                                </p>
-                                <p className='text-xs mt-1 font-medium'>Contains: {foodDetails.detectedAllergens.join(', ')}</p>
-                              </div>
-                            )}
-
-                            <h3 className='font-bold mb-2 text-orange-600 text-sm'>Ingredients List</h3>
+                            <h3 className='font-bold mb-2 text-orange-600 text-sm'>
+                              Ingredients List
+                            </h3>
                             {foodDetails.ingredients.length > 0 ? (
-                              // Styled Ingredient Tag
                               <div className='flex flex-wrap gap-2'>
                                 {foodDetails.ingredients.map((ing, idx) => (
                                   <div
                                     key={idx}
-                                    className={`flex items-center p-1 pr-3 border rounded-full shadow-sm max-w-max text-xs transition-transform hover:scale-105 ${ing.isAllergen
-                                      ? 'bg-red-50 border-red-300 text-red-800'
-                                      : 'bg-white border-gray-200 text-gray-700'
-                                      }`}
+                                    className={`flex items-center p-1 pr-3 border rounded-full shadow-sm max-w-max text-xs transition-transform hover:scale-105 ${
+                                      ing.isAllergen
+                                        ? 'bg-red-50 border-red-300 text-red-800'
+                                        : 'bg-white border-gray-200 text-gray-700'
+                                    }`}
                                   >
                                     <img
                                       src={`https://www.themealdb.com/images/ingredients/${ing.name}-Small.png`}
                                       alt={ing.name}
                                       className='w-6 h-6 object-cover rounded-full mr-2 bg-gray-100'
-                                      onError={(e) => { e.target.style.display = 'none' }}
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                      }}
                                     />
-                                    <span><span className='font-bold'>{ing.name}</span> <span className='opacity-70 mx-1'>|</span> {ing.measure}</span>
+                                    <span>
+                                      <span className='font-bold'>{ing.name}</span>{' '}
+                                      <span className='opacity-70 mx-1'>|</span> {ing.measure}
+                                    </span>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <p className='text-sm text-gray-500 italic'>No ingredients found.</p>
+                              <p className='text-sm text-gray-500 italic'>
+                                No ingredients found.
+                              </p>
                             )}
                           </div>
                         )}
                       </div>
                     ) : (
-                      <p className='text-sm text-gray-500 text-center py-4'>Failed to load data.</p>
+                      <p className='text-sm text-gray-500 text-center py-4'>
+                        Failed to load data.
+                      </p>
                     )}
                   </div>
                 )}
@@ -409,11 +485,11 @@ const Food = () => {
         </div>
       )}
 
-      {/* Pagination*/}
+      {/* Pagination */}
       {visibleCount < foods.length && !isSearching && (
         <div className='flex justify-center mt-12'>
           <button
-            onClick={() => setVisibleCount(prev => prev + 8)}
+            onClick={() => setVisibleCount((prev) => prev + 8)}
             className='bg-orange-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-orange-700 hover:scale-105 duration-300'
           >
             Load More Delights...

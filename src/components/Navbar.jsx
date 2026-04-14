@@ -1,5 +1,8 @@
 import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
+import { useAuth } from '../contexts/AuthContext';
+import { logoutUser } from '../firebase/auth';
 import { AiOutlineMenu, AiOutlineSearch, AiOutlineClose, AiFillTag } from 'react-icons/ai';
 import { BsFillCartFill, BsFillSaveFill } from 'react-icons/bs';
 import { TbTruckDelivery } from 'react-icons/tb'
@@ -11,6 +14,13 @@ const Navbar = () => {
   const [favMenuOpen, setFavMenuOpen] = useState(false);
   const [cartMenuOpen, setCartMenuOpen] = useState(false);
   const { favorites, cart, removeFromCart, addToast } = useContext(AppContext);
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    await logoutUser();
+    navigate('/login');
+  }
 
   // Form Validation States
   const [checkoutEmail, setCheckoutEmail] = useState('');
@@ -67,8 +77,8 @@ const Navbar = () => {
           placeholder='Search foods'
         />
       </div>
-      {/* Cart & Favorites buttons */}
-      <div className='hidden md:flex gap-2 text-sm relative'>
+      {/* Auth + Cart + Favorites buttons */}
+      <div className='hidden md:flex gap-2 text-sm relative items-center'>
         <button
           onClick={() => setCartMenuOpen(true)}
           className='bg-black text-white flex items-center px-4 py-2 rounded-full hover:bg-gray-800 transition-colors relative'
@@ -110,6 +120,28 @@ const Navbar = () => {
               ))
             )}
           </div>
+        )}
+
+        {/* Login / Logout */}
+        {currentUser ? (
+          <div className='flex items-center gap-2 ml-2'>
+            <span className='text-gray-500 text-xs hidden lg:block truncate max-w-[120px]'>{currentUser.email}</span>
+            <button
+              id='logout-btn'
+              onClick={handleLogout}
+              className='border border-gray-300 text-gray-600 px-3 py-2 rounded-full text-xs font-bold hover:bg-gray-100 transition-colors'
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <button
+            id='login-btn'
+            onClick={() => navigate('/login')}
+            className='bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-orange-700 transition-colors ml-2'
+          >
+            Login
+          </button>
         )}
       </div>
 
