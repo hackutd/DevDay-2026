@@ -7,8 +7,6 @@
 // The frontend just checks: if (error) show error, else show data.
 // ─────────────────────────────────────────────
 
-import axios from "axios";
-
 const BASE    = "https://api.nal.usda.gov/fdc/v1";
 const API_KEY = import.meta.env.VITE_USDA_API_KEY;
 
@@ -19,16 +17,17 @@ const API_KEY = import.meta.env.VITE_USDA_API_KEY;
 // ─────────────────────────────────────────────
 export async function searchFoods(query) {
   try {
-    const res = await axios.get(`${BASE}/foods/search`, {
-      params: {
-        query,
-        api_key:   API_KEY,
-        dataType:  "Foundation,SR Legacy", // most reliable nutritional data
-        pageSize:  10,                     // limit results
-      },
+    const params = new URLSearchParams({
+      query,
+      api_key:  API_KEY,
+      dataType: "Foundation,SR Legacy",
+      pageSize: 10,
     });
+    const res = await fetch(`${BASE}/foods/search?${params}`);
+    if (!res.ok) throw Object.assign(new Error(), { status: res.status });
+    const json = await res.json();
 
-    const foods = res.data.foods || [];
+    const foods = json.foods || [];
 
     // Clean up the response — only return what the frontend needs
     const cleaned = foods.map((food) => ({
@@ -56,11 +55,9 @@ export async function searchFoods(query) {
 // ─────────────────────────────────────────────
 export async function getFoodDetail(fdcId) {
   try {
-    const res = await axios.get(`${BASE}/food/${fdcId}`, {
-      params: { api_key: API_KEY },
-    });
-
-    const food = res.data;
+    const res = await fetch(`${BASE}/food/${fdcId}?api_key=${API_KEY}`);
+    if (!res.ok) throw new Error();
+    const food = await res.json();
 
     return {
       data: {
