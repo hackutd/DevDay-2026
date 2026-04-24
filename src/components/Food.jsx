@@ -56,7 +56,7 @@ const Food = () => {
     };
 
     fetchInitialFoods();
-  }, []);
+  }, []); //end API
 
   // Ingredient search debounce
   useEffect(() => {
