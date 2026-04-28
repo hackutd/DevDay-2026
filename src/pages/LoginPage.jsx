@@ -14,14 +14,10 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    try {//delete this section
-      /*
-      await loginUser(email, password);
-      navigate('/'); // Success → go to main page*/
+    try {
+      // Write your code here!
     } catch (err) {
-      /* delete this section too
-      setError('Invalid email or password. Please try again.');
-      */
+      // And here too
     }
     
     setLoading(false);

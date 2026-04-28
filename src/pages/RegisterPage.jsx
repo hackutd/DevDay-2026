@@ -21,19 +21,9 @@ export default function RegisterPage() {
     setLoading(true);
 
     try { 
-      //delete this section
-      /*
-      await registerUser(email, password);
-      navigate('/login'); // Success → go sign in
-      */
+      // code here
     } catch (err) {
-      /* delete this section too
-      if (err.code === 'auth/email-already-in-use') {
-        setError('That email is already registered. Try logging in.');
-      } else {
-        setError('Something went wrong. Please try again.');
-      }
-        */
+      // Write if/else statements here!
     }
 
     setLoading(false);

@@ -13,35 +13,17 @@ export const AppProvider = ({ children }) => {
 
   // Load favorites from Firestore whenever the logged-in user changes
   useEffect(() => {
-    /* delete this section
-    if (!currentUser) {
-      setFavorites([]); // Logged out → clear favorites from UI
-      return;
-      */
+    // write your code here!
     }
 
-    /* delete this function too
-    async function loadFavorites() {
-      const snap = await getDoc(doc(db, 'favorites', currentUser.uid));
-      if (snap.exists()) {
-        setFavorites(snap.data().items || []);
-      } else {
-        setFavorites([]); // First time this user logs in — no favorites yet
-      }
-    }
-      */
+    // create your function here!
+
     loadFavorites();
   }, [currentUser]);
 
-  // Write the updated favorites array back to Firestore
-  /*delete this too
-  const saveFavoritesToFirestore = useCallback(async (updatedFavorites) => {
-    if (!currentUser) return;
-    await setDoc(doc(db, 'favorites', currentUser.uid), {
-      items: updatedFavorites,
-    });
-  }, [currentUser]);
-*/
+  
+  // create your function here as well! (Reference slides for help)
+
   const toggleFavorite = (food) => {
     // Must be logged in to save favorites
     if (!currentUser) {
@@ -51,26 +33,14 @@ export const AppProvider = ({ children }) => {
 
     
     setFavorites((prev) => {
-      /*delete this function too
-      const exists = prev.some((f) => f.id === food.id || f.name === food.name);
-      let updated;
-      */
+      // Write your code here!
       if (exists) {
-      /*
-        updated = prev.filter((f) => f.name !== food.name);
-        addToast(`Removed ${food.name} from Favorites`);
-        */
+      // here as well!
       } else {
-        /*
-        updated = [...prev, food];
-        */
+        // and here too
         addToast(`❤️ Added ${food.name} to Favorites!`);
       }
-      /*
-      // Save the new array to Firestore
-      saveFavoritesToFirestore(updated);
-      return updated;
-      */
+      // write your code here as well!
     }); 
   };
 
