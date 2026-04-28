@@ -3,7 +3,7 @@
 // Three functions. That's it.
 // Firebase handles everything else — hashing, tokens, sessions.
 // ─────────────────────────────────────────────
-
+//delete this entire file
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,

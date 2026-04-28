@@ -14,13 +14,16 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    try {
+    try {//delete this section
+      /*
       await loginUser(email, password);
-      navigate('/'); // Success → go to main page
+      navigate('/'); // Success → go to main page*/
     } catch (err) {
+      /* delete this section too
       setError('Invalid email or password. Please try again.');
+      */
     }
-
+    
     setLoading(false);
   }
 
