@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { AppProvider }  from './context/AppContext';
+import { AppProvider }  from './contexts/AppContext';
 
 import Navbar          from './components/Navbar';
 import Hero            from './components/Hero';

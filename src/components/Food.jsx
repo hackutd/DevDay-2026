@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { AppContext } from '../context/AppContext';
+import { AppContext } from '../contexts/AppContext';
 import { AiFillHeart, AiOutlineHeart } from 'react-icons/ai';
 
 // Price tier assigned per TheMealDB category
