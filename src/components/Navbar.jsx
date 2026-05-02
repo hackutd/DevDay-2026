@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppContext } from '../context/AppContext';
+import { AppContext } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { logoutUser } from '../firebase/auth';
 import { AiOutlineMenu, AiOutlineSearch, AiOutlineClose, AiFillTag } from 'react-icons/ai';
