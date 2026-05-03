@@ -9,8 +9,6 @@ const INITIAL_CATEGORIES = Object.keys(CATEGORY_PRICES);
 
 const Food = () => {
   const [foods, setFoods] = useState([]);
-  const [ingredientSearchQuery, setIngredientSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
   const { favorites, toggleFavorite } = useContext(AppContext);
 
   // Fetch initial menu from TheMealDB
