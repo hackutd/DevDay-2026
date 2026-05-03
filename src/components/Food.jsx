@@ -14,7 +14,6 @@ const Food = () => {
   // Fetch initial menu from TheMealDB
   useEffect(() => {
   const fetchInitialFoods = async () => {
-    setIsSearching(true);
     try {
       const results = await Promise.all(
         INITIAL_CATEGORIES.map((cat) =>
@@ -35,7 +34,6 @@ const Food = () => {
     } catch (error) {
       console.error('Error fetching initial foods:', error);
     }
-    setIsSearching(false);
   };
   fetchInitialFoods();
 }, []);
