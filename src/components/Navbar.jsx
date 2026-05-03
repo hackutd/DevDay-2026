@@ -1,7 +1,8 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { logoutUser } from '../firebase/auth';
+
 import { AiOutlineMenu, AiOutlineSearch, AiOutlineClose, AiFillTag } from 'react-icons/ai';
 import { BsFillCartFill, BsFillSaveFill } from 'react-icons/bs';
 import {TbTruckDelivery} from 'react-icons/tb';
