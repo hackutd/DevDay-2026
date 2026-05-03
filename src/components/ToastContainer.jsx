@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { AppContext } from '../context/AppContext';
+import { AppContext } from '../contexts/AppContext';
 
 const ToastContainer = () => {
   const { toasts } = useContext(AppContext);

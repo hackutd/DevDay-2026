@@ -13,16 +13,35 @@ export const AppProvider = ({ children }) => {
 
   // Load favorites from Firestore whenever the logged-in user changes
   useEffect(() => {
-    // write your code here!
+    if(!currentUser) {
+      setFavorites([]); // Logged out. clear favorites from UI
+      return;
     }
-
-    // create your function here!
+    
+    async function loadFavorites() {
+      const snap = await getDoc(doc(db, 'favorites', currentUser.uid));
+        if (snap.exists()) {
+          setFavorites(snap.data().items || []);
+        } else {
+          setFavorites([]); //first time this user logs in  - no favorites yet
+        }
+    }
 
     loadFavorites();
   }, [currentUser]);
 
   
-  // create your function here as well! (Reference slides for help)
+  const saveFavoritesToFirestore = useCallback(async (updatedFavorites) => {
+    if (!currentUser) return;
+    try {
+      await setDoc(doc(db, 'favorites', currentUser.uid), {
+        items: updatedFavorites,
+      });
+    } catch (error) {
+      console.error('Error saving favorites:', error);
+      addToast('⚠️ Unable to save favorites right now.');
+    }
+  }, [currentUser]);
 
   const toggleFavorite = (food) => {
     // Must be logged in to save favorites
@@ -31,17 +50,21 @@ export const AppProvider = ({ children }) => {
       return;
     }
 
-    
     setFavorites((prev) => {
-      // Write your code here!
+      const exists = prev.some((f) => f.id === food.id || f.name === food.name);
+      let updated;
+
       if (exists) {
-      // here as well!
+        updated = prev.filter((f) => f.name !== food.name);
+        addToast(`Removed ${food.name} from Favorites`);
       } else {
-        // and here too
+        updated = [...prev, food];
         addToast(`❤️ Added ${food.name} to Favorites!`);
       }
-      // write your code here as well!
-    }); 
+
+      saveFavoritesToFirestore(updated);
+      return updated;
+    });
   };
 
   // ─── Cart (local state only) ──────────────────────────────────────────────
