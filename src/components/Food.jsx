@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
 import { AiFillHeart, AiOutlineHeart } from 'react-icons/ai';
-import {data} from '../data/data.js';
+// import {data} from '../data/data.js';
 
 // Backend pricing constants
 const CATEGORY_PRICES = { Chicken: '$$', Beef: '$$$', Pasta: '$$', Seafood: '$$$$' };
