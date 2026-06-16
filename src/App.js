@@ -1,15 +1,27 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
+import ToastContainer from './components/ToastContainer';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import Navbar from './components/Navbar';
+
+import Hero from './components/Hero';
+import HeadlineCards from './components/HeadlineCards';
+import Food from './components/Food';
+import Category from './components/Category';
 
 // Main page layout — all the existing components together
 function MainLayout() {
   return (
-    <div className='flex items-center justify-center h-screen bg-gray-100'>
-      <h1 className='text-4xl font-bold text-orange-600'>Welcome to HackUTD's Devday!</h1>
+    <div>
+      <Navbar />
+      <Hero />
+      <HeadlineCards />
+      <Food />
+      <Category />
+      <ToastContainer />
     </div>
   );
 }
