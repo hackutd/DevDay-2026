@@ -16,7 +16,6 @@ Required Packages
 - uvicorn
 - pydantic
 - python-dotenv
-- google-generativeai
 - requests
 
 Environment Variables
@@ -25,6 +24,15 @@ Environment Variables
 - ELEVENLABS_VOICE_ID
 
 One Endpoint
+
+GET /health
+
+Response body:
+{
+  "status": "ok"
+}
+
+Use this to check that the backend server is running.
 
 POST /chef/voice
 
@@ -44,7 +52,7 @@ Response:
 - The frontend can turn the response into a Blob and play it.
 
 Backend Flow
-1. Frontend calls POST /voice with text.
+1. Frontend calls POST /chef/voice with text.
 2. FastAPI validates the request using a Pydantic model.
 3. Backend sends the text to Gemini.
 4. Gemini returns a short voice-agent style response.
@@ -52,7 +60,11 @@ Backend Flow
 6. ElevenLabs returns MP3 audio.
 7. Backend returns the MP3 audio to the frontend.
 
-Create requirments.txt 
+Create and use a virtual environment
+cd backend
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 uvicorn main:app --reload
@@ -61,7 +73,7 @@ check out in /docs
 
 Frontend Usage
 - Send a POST request to:
-  http://localhost:8000/voice
+  http://localhost:8000/chef/voice
 
 - Example frontend flow:
   const response = await fetch("http://localhost:8000/chef/voice", {
