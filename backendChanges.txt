@@ -72,6 +72,18 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 check out in /docs 
 
+will need to test the audio part from terminal so u can get audio output in a file 
+regular output returned to frontend will be mp3 binary
+this works:
+
+Invoke-WebRequest `                        
+>>   -Uri "http://localhost:8000/chef/voice" `
+>>   -Method POST `
+>>   -ContentType "application/json" `
+>>   -Body '{"text":"Why is my pasta sauce too watery?"}' `
+>>   -OutFile "test.mp3"
+
+
 
 Frontend Usage
 - Send a POST request to:
