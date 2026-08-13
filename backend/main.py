@@ -5,11 +5,12 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from google import genai
 from pydantic import BaseModel, Field
 
 load_dotenv()
 
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = "gemini-3.5-flash-lite"
 ELEVENLABS_MODEL = "eleven_multilingual_v2"
 
 app = FastAPI(title="Chef Voice Backend")
@@ -38,53 +39,35 @@ def create_chef_voice(request: VoiceRequest):
     elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
     voice_id = os.getenv("ELEVENLABS_VOICE_ID")
 
-    if not gemini_api_key or not elevenlabs_api_key or not voice_id:
-        raise HTTPException(status_code=500, detail="Missing API key or voice ID")
-
-    gemini_url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{GEMINI_MODEL}:generateContent?key={gemini_api_key}"
-    )
+    if not gemini_api_key:
+        raise HTTPException(status_code=500, detail="Missing Gemini API key")
+    if not elevenlabs_api_key or not voice_id:
+        raise HTTPException(status_code=500, detail="Missing ElevenLabs API key or voice ID")
 
     prompt = (
-        "You are a friendly chef voice assistant. "
-        "Answer conversationally, keep it short, and focus on cooking help. "
-        "Do not use markdown. "
+        "You are a minion, a tiny, silly, high-energy chef helper with a playful banana-loving cartoon vibe. "
+        "Always be very concise: answer in 1 to 2 short sentences max. "
+        "Focus on practical cooking help. "
+        "Use simple words, light humor, and occasional goofy expressions like 'ta-da' or 'oopsie'. "
+        "Do not use markdown, lists, or long explanations. "
         f"User: {request.text}"
     )
 
-    gemini_response = requests.post(
-        gemini_url,
-        json={
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "text": prompt,
-                        }
-                    ]
-                }
-            ]
-        },
-        timeout=30,
-    )
-
-    if gemini_response.status_code != 200:
-        raise HTTPException(status_code=502, detail="Gemini request failed")
-
-    data = gemini_response.json()
     try:
-        reply_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except (KeyError, IndexError, TypeError):
-        raise HTTPException(status_code=502, detail="Gemini returned an invalid response")
+        client = genai.Client(api_key=gemini_api_key)
+        gemini_response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
+        reply_text = gemini_response.text.strip()
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Gemini request failed: {error}")
 
     if not reply_text:
         raise HTTPException(status_code=502, detail="Gemini returned no text")
 
-    elevenlabs_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-
     elevenlabs_response = requests.post(
-        elevenlabs_url,
+        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
         headers={
             "xi-api-key": elevenlabs_api_key,
             "Content-Type": "application/json",
@@ -94,11 +77,14 @@ def create_chef_voice(request: VoiceRequest):
             "text": reply_text,
             "model_id": ELEVENLABS_MODEL,
         },
-        timeout=30,
+        timeout=300,
     )
 
     if elevenlabs_response.status_code != 200:
-        raise HTTPException(status_code=502, detail="ElevenLabs audio generation failed")
+        raise HTTPException(
+            status_code=502,
+            detail=f"ElevenLabs audio generation failed: {elevenlabs_response.text}",
+        )
 
     return Response(
         content=elevenlabs_response.content,

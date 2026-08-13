@@ -16,12 +16,12 @@ Required Packages
 - uvicorn
 - pydantic
 - python-dotenv
-- requests
+- google-genai
 
 Environment Variables
 - GEMINI_API_KEY
-- ELEVENLABS_API_KEY
-- ELEVENLABS_VOICE_ID
+- ELEVENLABS_API_KEY, add later when audio is turned on
+- ELEVENLABS_VOICE_ID, add later when audio is turned on
 
 One Endpoint
 
@@ -47,18 +47,20 @@ Validation:
 - text should have a max length, such as 2000 characters
 
 Response:
-- Return MP3 audio bytes directly.
-- Content-Type: audio/mpeg
-- The frontend can turn the response into a Blob and play it.
+- For first testing, return Gemini's text response as JSON:
+  {
+    "reply": "Your Gemini response here"
+  }
+- Later, switch this endpoint back to returning MP3 audio bytes from ElevenLabs.
 
 Backend Flow
 1. Frontend calls POST /chef/voice with text.
 2. FastAPI validates the request using a Pydantic model.
 3. Backend sends the text to Gemini.
 4. Gemini returns a short voice-agent style response.
-5. Backend sends Gemini's response text to ElevenLabs.
-6. ElevenLabs returns MP3 audio.
-7. Backend returns the MP3 audio to the frontend.
+5. Backend returns Gemini's response text as JSON.
+6. Later, backend sends Gemini's response text to ElevenLabs.
+7. Later, backend returns the MP3 audio to the frontend.
 
 Create and use a virtual environment
 cd backend
@@ -82,7 +84,5 @@ Frontend Usage
     body: JSON.stringify({ text: userText }),
   });
 
-  const audioBlob = await response.blob();
-  const audioUrl = URL.createObjectURL(audioBlob);
-  const audio = new Audio(audioUrl);
-  audio.play();
+  const data = await response.json();
+  console.log(data.reply);
