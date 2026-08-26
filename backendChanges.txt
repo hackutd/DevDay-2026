@@ -1,100 +1,154 @@
-Simple Backend Plan: FastAPI Voice Endpoint
+Chef Voice Agent Backend
 
-Goal
-- Create one simple FastAPI backend server.
-- The frontend sends text to one endpoint.
-- The backend sends that text to Gemini to generate a response.
-- The backend sends Gemini's response text to ElevenLabs.
-- The backend returns the generated audio file for the frontend to play.
+What This Backend Does
+- FastAPI backend lives in backend/main.py.
+- Uses Gemini to generate a short chef-agent response.
+- Uses ElevenLabs Text to Speech to return playable MP3 audio.
+- Also supports voice input: frontend sends an audio file, ElevenLabs Speech to Text transcribes it, Gemini responds, then ElevenLabs returns MP3 audio.
 
-Backend File
-- Put all backend logic in one file:
-  - main.py
+Environment
+- Create backend/.env from backend/.env.example.
+- Required keys:
+  - GEMINI_API_KEY
+  - ELEVENLABS_API_KEY
+  - ELEVENLABS_VOICE_ID
+- Do not commit backend/.env.
 
-Required Packages
-- fastapi
-- uvicorn
-- pydantic
-- python-dotenv
-- google-genai
 
-Environment Variables
-- GEMINI_API_KEY
-- ELEVENLABS_API_KEY, add later when audio is turned on
-- ELEVENLABS_VOICE_ID, add later when audio is turned on
+Git Ignore
+- Generated audio files such as .mp3, .m4a, .wav, .webm, and .ogg are ignored by git.
+- backend/.env, backend/.venv, and __pycache__ are ignored by git.
 
-One Endpoint
 
-GET /health
-
-Response body:
-{
-  "status": "ok"
-}
-
-Use this to check that the backend server is running.
-
-POST /chef/voice
-
-Request body:
-{
-  "text": "recipe:.... why does the sauce look so brown.."
-}
-
-Validation:
-- text is required
-- text must not be empty
-- text should have a max length, such as 2000 characters
-
-Response:
-- For first testing, return Gemini's text response as JSON:
-  {
-    "reply": "Your Gemini response here"
-  }
-- Later, switch this endpoint back to returning MP3 audio bytes from ElevenLabs.
-
-Backend Flow
-1. Frontend calls POST /chef/voice with text.
-2. FastAPI validates the request using a Pydantic model.
-3. Backend sends the text to Gemini.
-4. Gemini returns a short voice-agent style response.
-5. Backend returns Gemini's response text as JSON.
-6. Later, backend sends Gemini's response text to ElevenLabs.
-7. Later, backend returns the MP3 audio to the frontend.
-
-Create and use a virtual environment
+Setup
 cd backend
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
 pip install -r requirements.txt
-
 uvicorn main:app --reload
-check out in /docs 
 
-will need to test the audio part from terminal so u can get audio output in a file 
-regular output returned to frontend will be mp3 binary
-this works:
+Docs
+- FastAPI docs: http://localhost:8000/docs
+- Health check: http://localhost:8000/health
 
-Invoke-WebRequest `                        
->>   -Uri "http://localhost:8000/chef/voice" `
->>   -Method POST `
->>   -ContentType "application/json" `
->>   -Body '{"text":"Why is my pasta sauce too watery?"}' `
->>   -OutFile "test.mp3"
+Endpoints
 
+GET /health
+- Confirms the server is running.
+- Response:
+  {
+    "status": "ok"
+  }
 
+POST /chef/voice
+- Text input fallback.
+- Request JSON:
+  {
+    "text": "Why is my pasta sauce too watery?"
+  }
+- Response:
+  - MP3 audio bytes
+  - Content-Type: audio/mpeg
 
-Frontend Usage
-- Send a POST request to:
-  http://localhost:8000/chef/voice
+POST /chef/voice/audio
+- Main voice-agent endpoint for the frontend.
+- Request:
+  - multipart/form-data
+  - field name: file
+  - value: recorded audio file/blob
+- Response:
+  - MP3 audio bytes
+  - Content-Type: audio/mpeg
 
-- Example frontend flow:
-  const response = await fetch("http://localhost:8000/chef/voice", {
+Frontend Integration
+
+Use this endpoint for voice input:
+http://localhost:8000/chef/voice/audio
+
+Important:
+- Send audio with FormData.
+- Do not manually set Content-Type for FormData.
+- Read the response with response.blob().
+- Play the returned blob as audio.
+
+Suggested helper:
+
+async function sendVoiceRecording(audioBlob) {
+  const formData = new FormData();
+  formData.append("file", audioBlob, "recording.webm");
+
+  const response = await fetch("http://localhost:8000/chef/voice/audio", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: userText }),
+    body: formData,
   });
 
-  const data = await response.json();
-  console.log(data.reply);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText);
+  }
+
+  const replyAudioBlob = await response.blob();
+  const replyAudioUrl = URL.createObjectURL(replyAudioBlob);
+  const audio = new Audio(replyAudioUrl);
+  await audio.play();
+
+  return replyAudioUrl;
+}
+
+Suggested microphone flow:
+
+let recorder;
+let chunks = [];
+
+async function startRecording() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  recorder = new MediaRecorder(stream);
+  chunks = [];
+
+  recorder.ondataavailable = (event) => {
+    chunks.push(event.data);
+  };
+
+  recorder.onstop = async () => {
+    const audioBlob = new Blob(chunks, { type: "audio/webm" });
+    await sendVoiceRecording(audioBlob);
+  };
+
+  recorder.start();
+}
+
+function stopRecording() {
+  recorder.stop();
+}
+
+Recommended frontend UI states:
+- idle: user can start recording
+- recording: mic is active
+- loading: backend is transcribing/responding/generating audio
+- playing: response audio is playing
+- error: request failed, let user retry
+
+Testing From Terminal
+
+Windows PowerShell text input test:
+Invoke-WebRequest `
+  -Uri "http://localhost:8000/chef/voice" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"text":"Why is my pasta sauce too watery?"}' `
+  -OutFile "test.mp3"
+
+Windows PowerShell audio input test:
+
+curl.exe -X POST "http://localhost:8000/chef/voice/audio" -F "file=@rec.m4a" --output voice-response.mp3
+
+Mac/Linux text input test:
+curl -X POST "http://localhost:8000/chef/voice" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Why is my pasta sauce too watery?"}' \
+  --output test.mp3
+
+Mac/Linux audio input test:
+curl -X POST "http://localhost:8000/chef/voice/audio" \
+  -F "file=@rec.m4a" \
+  --output voice-response.mp3

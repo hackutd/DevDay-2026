@@ -10,7 +10,12 @@ __pycache__/
 *.py[cod]
 
 
-test.mp3
+# local audio recordings and generated voice responses
+*.mp3
+*.m4a
+*.wav
+*.webm
+*.ogg
 
 # testing
 /coverage
