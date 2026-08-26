@@ -87,7 +87,7 @@ def make_audio(reply_text: str, elevenlabs_api_key: str, voice_id: str) -> bytes
 #function to transcribe audio using ElevenLabs API
 
 def transcribe_audio(file: UploadFile, elevenlabs_api_key: str) -> str:
-    audio_bytes = file.file.read()
+    audio_bytes = file.file.read() # file is an object which has a file attribute, read bytes with .read()
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="Uploaded audio file is empty")
 
