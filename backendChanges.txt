@@ -1,77 +1,49 @@
 Chef Voice Agent Backend
 
-What This Backend Does
-- FastAPI backend lives in backend/main.py.
-- Uses Gemini to generate a short chef-agent response.
-- Uses ElevenLabs Text to Speech to return playable MP3 audio.
-- Also supports voice input: frontend sends an audio file, ElevenLabs Speech to Text transcribes it, Gemini responds, then ElevenLabs returns MP3 audio.
+Backend Location
+- backend/main.py
 
-Environment
-- Create backend/.env from backend/.env.example.
-- Required keys:
-  - GEMINI_API_KEY
-  - ELEVENLABS_API_KEY
-  - ELEVENLABS_VOICE_ID
-- Do not commit backend/.env.
+What It Does
+There are 2 main endpoints the frontend should call from some kind of pop up screen
+- Text input: text -> Gemini -> ElevenLabs TTS -> MP3 audio response
+- Voice input: audio file -> ElevenLabs STT -> Gemini -> ElevenLabs TTS -> MP3 audio response
 
-
-Git Ignore
-- Generated audio files such as .mp3, .m4a, .wav, .webm, and .ogg are ignored by git.
-- backend/.env, backend/.venv, and __pycache__ are ignored by git.
-
-
-Setup
-cd backend
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn main:app --reload
-
-Docs
-- FastAPI docs: http://localhost:8000/docs
-- Health check: http://localhost:8000/health
-
-Endpoints
+API Contract
 
 GET /health
-- Confirms the server is running.
+- Purpose: check if backend is running.
 - Response:
-  {
-    "status": "ok"
-  }
+  { "status": "ok" }
 
 POST /chef/voice
-- Text input fallback.
-- Request JSON:
+- Purpose: text fallback endpoint.
+- Request:
+  Content-Type: application/json
   {
     "text": "Why is my pasta sauce too watery?"
   }
 - Response:
-  - MP3 audio bytes
-  - Content-Type: audio/mpeg
+  Content-Type: audio/mpeg
+  Body: MP3 audio bytes
 
 POST /chef/voice/audio
-- Main voice-agent endpoint for the frontend.
+- Purpose: main frontend voice-agent endpoint.
 - Request:
-  - multipart/form-data
-  - field name: file
-  - value: recorded audio file/blob
+  Content-Type: multipart/form-data
+  field name: file
+  field value: recorded audio file/blob
 - Response:
-  - MP3 audio bytes
-  - Content-Type: audio/mpeg
+  Content-Type: audio/mpeg
+  Body: MP3 audio bytes
 
-Frontend Integration
+Frontend Notes
+- For /chef/voice/audio, send FormData.
+- Do not manually set Content-Type when sending FormData.
+- Read successful responses with response.blob().
+- Play the returned Blob with URL.createObjectURL().
+- Recommended UI states: idle, recording, loading, playing, error.
 
-Use this endpoint for voice input:
-http://localhost:8000/chef/voice/audio
-
-Important:
-- Send audio with FormData.
-- Do not manually set Content-Type for FormData.
-- Read the response with response.blob().
-- Play the returned blob as audio.
-
-Suggested helper:
+Frontend Voice Helper
 
 async function sendVoiceRecording(audioBlob) {
   const formData = new FormData();
@@ -83,19 +55,17 @@ async function sendVoiceRecording(audioBlob) {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText);
+    throw new Error(await response.text());
   }
 
   const replyAudioBlob = await response.blob();
   const replyAudioUrl = URL.createObjectURL(replyAudioBlob);
-  const audio = new Audio(replyAudioUrl);
-  await audio.play();
+  await new Audio(replyAudioUrl).play();
 
   return replyAudioUrl;
 }
 
-Suggested microphone flow:
+Frontend Recording Shape
 
 let recorder;
 let chunks = [];
@@ -121,16 +91,31 @@ function stopRecording() {
   recorder.stop();
 }
 
-Recommended frontend UI states:
-- idle: user can start recording
-- recording: mic is active
-- loading: backend is transcribing/responding/generating audio
-- playing: response audio is playing
-- error: request failed, let user retry
 
-Testing From Terminal
+TO RUN:
 
-Windows PowerShell text input test:
+Environment
+- Create backend/.env from backend/.env.example.
+- Required keys:
+  - GEMINI_API_KEY
+  - ELEVENLABS_API_KEY
+  - ELEVENLABS_VOICE_ID
+- Do not commit backend/.env.
+
+Run Backend
+cd backend
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+Useful URLs
+- API docs: http://localhost:8000/docs
+- Health check: http://localhost:8000/health
+
+Test Commands
+
+Windows text test:
 Invoke-WebRequest `
   -Uri "http://localhost:8000/chef/voice" `
   -Method POST `
@@ -138,17 +123,18 @@ Invoke-WebRequest `
   -Body '{"text":"Why is my pasta sauce too watery?"}' `
   -OutFile "test.mp3"
 
-Windows PowerShell audio input test:
-
+Windows audio test:
 curl.exe -X POST "http://localhost:8000/chef/voice/audio" -F "file=@rec.m4a" --output voice-response.mp3
 
-Mac/Linux text input test:
+Mac/Linux text test:
 curl -X POST "http://localhost:8000/chef/voice" \
   -H "Content-Type: application/json" \
   -d '{"text":"Why is my pasta sauce too watery?"}' \
   --output test.mp3
 
-Mac/Linux audio input test:
+Mac/Linux audio test:
 curl -X POST "http://localhost:8000/chef/voice/audio" \
   -F "file=@rec.m4a" \
   --output voice-response.mp3
+
+Git Ignore Notes:  env files, backend/.venv, __pycache__, and generated audio files are ignored.
