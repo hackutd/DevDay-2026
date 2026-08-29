@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from firebase_service import toggle_favorite
 from google import genai
 from pydantic import BaseModel, Field
 
@@ -16,8 +17,8 @@ GEMINI_MODEL = "gemini-3.5-flash-lite"
 ELEVENLABS_MODEL = "eleven_multilingual_v2"
 ELEVENLABS_STT_MODEL = "scribe_v2"
 
-# creates our fast api app 
-app = FastAPI(title="Chef Voice Backend")
+# create our fast api app 
+app = FastAPI(title="Chef Voice Backend") # this line wont be here in hacker version
 
 # need this so our frontend and backend can talk to each other
 app.add_middleware(
@@ -28,9 +29,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# our request model for the /chef/voice endpoint
-class VoiceRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=2000)
+
+# code health endpoint here:
+# to test if our backend is running
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 # helper function to generate a chef-like reply using Gemini API
@@ -44,6 +48,7 @@ def make_chef_reply(user_text: str, gemini_api_key: str) -> str:
         f"User: {user_text}"
     )
 
+    # code gemini api call here: 
     try:
         client = genai.Client(api_key=gemini_api_key)
         gemini_response = client.models.generate_content(
@@ -61,6 +66,7 @@ def make_chef_reply(user_text: str, gemini_api_key: str) -> str:
 
 # function to make audio from the chef reply using ElevenLabs API
 def make_audio(reply_text: str, elevenlabs_api_key: str, voice_id: str) -> bytes:
+    # code elevenlabs text-to-speech API call here:
     elevenlabs_response = requests.post(
         f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
         headers={
@@ -74,7 +80,9 @@ def make_audio(reply_text: str, elevenlabs_api_key: str, voice_id: str) -> bytes
         },
         timeout=300,
     )
+    # end of elevenlabs text-to-speech API call
 
+    # if there is an erorr we will return a 502 error to the frontend
     if elevenlabs_response.status_code != 200:
         raise HTTPException(
             status_code=502,
@@ -84,13 +92,14 @@ def make_audio(reply_text: str, elevenlabs_api_key: str, voice_id: str) -> bytes
     return elevenlabs_response.content
 
 
-#function to transcribe audio using ElevenLabs API
+# function to transcribe audio using ElevenLabs API
 
 def transcribe_audio(file: UploadFile, elevenlabs_api_key: str) -> str:
     audio_bytes = file.file.read() # file is an object which has a file attribute, read bytes with .read()
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="Uploaded audio file is empty")
 
+    # code elevenlabs speech-to-text API call here:
     stt_response = requests.post(
         "https://api.elevenlabs.io/v1/speech-to-text",
         headers={"xi-api-key": elevenlabs_api_key},
@@ -104,13 +113,16 @@ def transcribe_audio(file: UploadFile, elevenlabs_api_key: str) -> str:
         data={"model_id": ELEVENLABS_STT_MODEL},
         timeout=300,
     )
+    # end of elevenlabs speech-to-text API call
 
+    # check if the transcription was successful
     if stt_response.status_code != 200:
         raise HTTPException(
             status_code=502,
             detail=f"ElevenLabs transcription failed: {stt_response.text}",
         )
 
+    # get transcript from the response
     transcript = stt_response.json().get("text", "").strip()
     if not transcript:
         raise HTTPException(status_code=502, detail="ElevenLabs returned no transcript")
@@ -118,25 +130,39 @@ def transcribe_audio(file: UploadFile, elevenlabs_api_key: str) -> str:
     return transcript
 
 
-# to test if our backend is running
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+#add request model for the /chef/voice endpoint here:
+class VoiceRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2000)
+
+# make a model for food items for the favorites endpoint:
+class FoodItem(BaseModel):
+    id: str
+    name: str
+    image: str
+    price: str
+    category: str | None = None
+
+# make a model for favorite requests for the favorites endpoint:
+class FavoriteRequest(BaseModel):
+    userId: str
+    food: FoodItem
 
 
 # endpoint to generate chef-like voice from text
 @app.post("/chef/voice")
 def create_chef_voice(request: VoiceRequest):
+    # code here and add these
     gemini_api_key = os.getenv("GEMINI_API_KEY")
     elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
     voice_id = os.getenv("ELEVENLABS_VOICE_ID")
 
-    # if missing some of our API keys, return an error
+    # code here : if missing some of our API keys, return an error
     if not gemini_api_key:
         raise HTTPException(status_code=500, detail="Missing Gemini API key")
     if not elevenlabs_api_key or not voice_id:
         raise HTTPException(status_code=500, detail="Missing ElevenLabs API key or voice ID")
 
+    # code here
     # call our helper functions to get our audio response
     reply_text = make_chef_reply(request.text, gemini_api_key)
     audio_bytes = make_audio(reply_text, elevenlabs_api_key, voice_id)
@@ -151,16 +177,18 @@ def create_chef_voice(request: VoiceRequest):
 # to generate a chef-like voice from an audio file
 @app.post("/chef/voice/audio")
 def create_chef_voice_from_audio(file: UploadFile = File(...)):
+    # code here
     gemini_api_key = os.getenv("GEMINI_API_KEY")
     elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
     voice_id = os.getenv("ELEVENLABS_VOICE_ID")
 
-    # if missing some of our API keys, return an error
+    # code here : if missing some of our API keys, return an error
     if not gemini_api_key:
         raise HTTPException(status_code=500, detail="Missing Gemini API key")
     if not elevenlabs_api_key or not voice_id:
         raise HTTPException(status_code=500, detail="Missing ElevenLabs API key or voice ID")
 
+    # code here
     # call our helper functions
     transcript = transcribe_audio(file, elevenlabs_api_key)
     reply_text = make_chef_reply(transcript, gemini_api_key)
@@ -171,3 +199,13 @@ def create_chef_voice_from_audio(file: UploadFile = File(...)):
         content=audio_bytes,
         media_type="audio/mpeg",
     )
+
+# make endpoint for toggling user favorites
+@app.post("/favorites/toggle")
+def toggle_user_favorite(request: FavoriteRequest):
+    updated_favorites = toggle_favorite(
+        request.userId,
+        request.food.model_dump(exclude_none=True),
+    )
+
+    return {"favorites": updated_favorites}

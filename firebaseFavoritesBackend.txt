@@ -1,0 +1,117 @@
+Firebase Favorites Backend
+
+Goal
+- Store favorite food items in Firestore from the FastAPI backend.
+- Keep this beginner-friendly: no Firebase Auth token required.
+- Frontend sends a userId string and a food item.
+- Backend stores favorites under favorites/{userId}.
+
+Endpoint
+
+POST /favorites/toggle
+
+Request JSON:
+{
+  "userId": "demo-user",
+  "food": {
+    "id": "53050",
+    "name": "Ayam Percik",
+    "image": "https://www.themealdb.com/images/media/meals/020z181619788503.jpg",
+    "price": "$$",
+    "category": "chicken"
+  }
+}
+
+Response JSON:
+{
+  "favorites": []
+}
+
+Behavior
+- If the food id is not already favorited, backend adds it.
+- If the food id is already favorited, backend removes it.
+- Backend returns the updated favorites array.
+- Firestore document path:
+  favorites/{userId}
+- Firestore document shape:
+  {
+    "items": []
+  }
+
+Frontend User ID Options
+
+Option 1: Hardcoded demo user
+const userId = "demo-user";
+can also just use netID
+
+Option 2: Browser-generated guest user
+let userId = localStorage.getItem("userId");
+
+if (!userId) {
+  userId = crypto.randomUUID();
+  localStorage.setItem("userId", userId);
+}
+
+Frontend Toggle Call
+
+async function toggleFavorite(food) {
+  const userId = localStorage.getItem("userId") || "demo-user";
+
+  const response = await fetch("http://localhost:8000/favorites/toggle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId,
+      food,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const data = await response.json();
+  return data.favorites;
+}
+
+
+Backend Firebase Setup
+
+1. Go to Firebase Console.
+2. Open the Firebase project.
+3. Go to Project Settings.
+4. Go to Service accounts.
+5. Click Generate new private key.
+6. Download the JSON file.
+7. Put it here:
+   backend/firebase-service-account.json
+8. Add this to backend/.env:
+   FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
+
+Required backend dependency:
+firebase-admin
+
+Do Not Commit
+- backend/.env
+- backend/firebase-service-account.json
+
+Security Note
+- This is a hackathon/simple demo version.
+- Since the backend trusts userId from the frontend, anyone could write to another user's favorites if they know the userId.
+- Production version should use Firebase Auth tokens and verify them in the backend.
+
+Terminal Test
+
+Windows PowerShell:
+Invoke-WebRequest `
+  -Uri "http://localhost:8000/favorites/toggle" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"userId":"demo-user","food":{"id":"53050","name":"Ayam Percik","image":"https://www.themealdb.com/images/media/meals/020z181619788503.jpg","price":"$$","category":"chicken"}}'
+
+Mac/Linux:
+curl -X POST "http://localhost:8000/favorites/toggle" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"demo-user","food":{"id":"53050","name":"Ayam Percik","image":"https://www.themealdb.com/images/media/meals/020z181619788503.jpg","price":"$$","category":"chicken"}}'
+
+can also test it our in swagger docs

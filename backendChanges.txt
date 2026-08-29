@@ -4,7 +4,7 @@ Backend Location
 - backend/main.py
 
 What It Does
-There are 2 main endpoints the frontend should call from some kind of pop up screen
+There are 2 main endpoints the frontend can call from a voice assistant popup/modal:
 - Text input: text -> Gemini -> ElevenLabs TTS -> MP3 audio response
 - Voice input: audio file -> ElevenLabs STT -> Gemini -> ElevenLabs TTS -> MP3 audio response
 
@@ -35,6 +35,26 @@ POST /chef/voice/audio
 - Response:
   Content-Type: audio/mpeg
   Body: MP3 audio bytes
+
+POST /favorites/toggle
+- Purpose: toggle a food item in the user's Firestore favorites.
+- Request:
+  Content-Type: application/json
+  {
+    "userId": "firebase-user-uid",
+    "food": {
+      "id": "53050",
+      "name": "Ayam Percik",
+      "image": "https://www.themealdb.com/images/media/meals/020z181619788503.jpg",
+      "price": "$$",
+      "category": "chicken"
+    }
+  }
+- Response:
+  Content-Type: application/json
+  {
+    "favorites": []
+  }
 
 Frontend Notes
 - For /chef/voice/audio, send FormData.
@@ -100,7 +120,9 @@ Environment
   - GEMINI_API_KEY
   - ELEVENLABS_API_KEY
   - ELEVENLABS_VOICE_ID
+  - FIREBASE_SERVICE_ACCOUNT_PATH
 - Do not commit backend/.env.
+- Do not commit backend/firebase-service-account.json.
 
 Run Backend
 cd backend
@@ -137,4 +159,62 @@ curl -X POST "http://localhost:8000/chef/voice/audio" \
   -F "file=@rec.m4a" \
   --output voice-response.mp3
 
-Git Ignore Notes:  env files, backend/.venv, __pycache__, and generated audio files are ignored.
+Firebase Favorites Backend
+
+Current app behavior:
+- Frontend already uses Firebase Auth for login/register/logout.
+- Frontend currently writes favorites directly to Firestore from src/context/AppContext.js.
+- Firestore shape is favorites/{userUid} with an items array.
+
+Backend behavior:
+- Move favorite add/remove logic behind the FastAPI backend.
+- Keep this beginner-friendly by having the frontend send currentUser.uid as userId.
+- Backend uses Firebase Admin SDK to write to Firestore.
+- Production version would verify a Firebase ID token instead of trusting userId from the frontend.
+
+Backend files:
+- backend/firebase_service.py handles Firebase setup and Firestore helper functions.
+- backend/main.py has POST /favorites/toggle.
+- backend/requirements.txt includes firebase-admin.
+
+Firebase Admin setup:
+1. Go to Firebase Console.
+2. Open the project used by the frontend.
+3. Go to Project Settings.
+4. Go to Service accounts.
+5. Click Generate new private key.
+6. Save the downloaded JSON file inside backend/.
+7. Rename it to firebase-service-account.json.
+8. Make sure this file is ignored by git.
+
+Add this to backend/.env:
+FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
+
+Frontend call shape:
+await fetch("http://localhost:8000/favorites/toggle", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    userId: currentUser.uid,
+    food,
+  }),
+});
+
+Important:
+- userId should be currentUser.uid from Firebase Auth.
+- Backend writes to favorites/{userId}.
+- This is simpler for a hackathon, but not secure for production because userId can be faked.
+
+Windows Firebase favorites test:
+Invoke-WebRequest `
+  -Uri "http://localhost:8000/favorites/toggle" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"userId":"test-user","food":{"id":"53050","name":"Ayam Percik","image":"https://www.themealdb.com/images/media/meals/020z181619788503.jpg","price":"$$","category":"chicken"}}'
+
+Mac/Linux Firebase favorites test:
+curl -X POST "http://localhost:8000/favorites/toggle" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"test-user","food":{"id":"53050","name":"Ayam Percik","image":"https://www.themealdb.com/images/media/meals/020z181619788503.jpg","price":"$$","category":"chicken"}}'
+
+Git Ignore Notes: env files, backend/.venv, __pycache__, and generated audio files are ignored.
