@@ -18,6 +18,7 @@ def get_firestore_db():
 
 # code for toggling user favorites: 
 def toggle_favorite(user_id: str, food: dict) -> list:
+    #code here to grab existing favorites for the user
     db = get_firestore_db()
     favorite_ref = db.collection("favorites").document(user_id)
     favorite_doc = favorite_ref.get()
@@ -26,6 +27,7 @@ def toggle_favorite(user_id: str, food: dict) -> list:
     if favorite_doc.exists:
         favorites = favorite_doc.to_dict().get("items", []) if favorite_doc.to_dict() else []
 
+    # Code here to add the food to favorites or remove it if already favorited
     food_id = food.get("id")
     already_favorited = any(item.get("id") == food_id for item in favorites)
 

@@ -17,6 +17,7 @@ __pycache__/
 *.wav
 *.webm
 *.ogg
+/tmp_pdf_pages_v2
 
 # testing
 /coverage

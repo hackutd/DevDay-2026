@@ -134,18 +134,7 @@ def transcribe_audio(file: UploadFile, elevenlabs_api_key: str) -> str:
 class VoiceRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=2000)
 
-# make a model for food items for the favorites endpoint:
-class FoodItem(BaseModel):
-    id: str
-    name: str
-    image: str
-    price: str
-    category: str | None = None
 
-# make a model for favorite requests for the favorites endpoint:
-class FavoriteRequest(BaseModel):
-    userId: str
-    food: FoodItem
 
 
 # endpoint to generate chef-like voice from text
@@ -200,6 +189,21 @@ def create_chef_voice_from_audio(file: UploadFile = File(...)):
         media_type="audio/mpeg",
     )
 
+
+# make a model for food items for the favorites endpoint:
+class FoodItem(BaseModel):
+    id: str
+    name: str
+    image: str
+    price: str
+    category: str | None = None
+
+# make a model for favorite requests for the favorites endpoint:
+class FavoriteRequest(BaseModel):
+    userId: str
+    food: FoodItem
+
+    
 # make endpoint for toggling user favorites
 @app.post("/favorites/toggle")
 def toggle_user_favorite(request: FavoriteRequest):
