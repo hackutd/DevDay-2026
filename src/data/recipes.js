@@ -14,17 +14,19 @@ export const recipes = [
       "2 cloves garlic",
       "1/4 cup parmesan",
       "Fresh basil",
-      "Salt and pepper",
+      "Salt",
+      "Pepper",
     ],
     instructions: [
       "Cook the pasta according to the package directions.",
       "Sauté the garlic until fragrant.",
       "Add the tomato sauce and simmer for 5 minutes.",
-      "Stir in the heavy cream and parmesan.",
-      "Add the pasta and toss everything together.",
+      "Stir in the cream and parmesan.",
+      "Add the cooked pasta and toss to combine.",
       "Top with basil and serve.",
     ],
   },
+
   {
     id: 2,
     name: "Chicken Tacos",
@@ -46,10 +48,11 @@ export const recipes = [
       "Cook the chicken until fully cooked.",
       "Slice the chicken into strips.",
       "Warm the tortillas.",
-      "Add the chicken and toppings.",
+      "Add chicken and toppings.",
       "Finish with fresh lime.",
     ],
   },
+
   {
     id: 3,
     name: "Vegetable Curry",
@@ -75,6 +78,7 @@ export const recipes = [
       "Serve over rice.",
     ],
   },
+
   {
     id: 4,
     name: "Avocado Toast",
@@ -89,13 +93,13 @@ export const recipes = [
       "1/2 lemon",
       "Chili flakes",
       "Salt",
-      "Black pepper",
+      "Pepper",
     ],
     instructions: [
       "Toast the bread.",
       "Mash the avocado in a bowl.",
-      "Mix in lemon juice, salt, and pepper.",
-      "Spread the avocado over the toast.",
+      "Add lemon juice, salt, and pepper.",
+      "Spread avocado over toast.",
       "Top with chili flakes.",
     ],
   },

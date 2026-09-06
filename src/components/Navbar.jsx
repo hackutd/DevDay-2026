@@ -1,9 +1,7 @@
 function Navbar() {
   return (
     <nav>
-      <div>
-        <span>DevDay Recipes</span>
-      </div>
+      {/* We'll build our Navbar in Checkpoint 1 */}
     </nav>
   );
 }

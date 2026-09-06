@@ -3,16 +3,7 @@ import RecipeCard from "./RecipeCard";
 function RecipeList({ recipes }) {
   return (
     <section id="recipes">
-      <h2>Recipes</h2>
-
-      <div>
-        {recipes.map((recipe) => (
-          <RecipeCard
-            key={recipe.id}
-            recipe={recipe}
-          />
-        ))}
-      </div>
+      {/* We'll display our recipes here in Checkpoint 1 */}
     </section>
   );
 }
